@@ -20,7 +20,8 @@ pub fn default_profile() -> (Toolchain, Profile) {
         Toolchain {
             cc: "clang".into(),
             cxx: "clang++".into(),
-            ar: "llvm-ar".into(),
+            ar: "ar".into(),
+            arflags: Some(vec!["rcs".into()]),
             rc: None,
             sysroot: None,
             target_triple: None,

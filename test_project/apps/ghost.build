@@ -1,0 +1,10 @@
+[package]
+name = "adder"
+type = "exe"
+
+[deps]
+direct = ["add", "io"]
+
+[sources]
+roots = ["."]
+include = ["*.cpp"]

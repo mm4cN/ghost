@@ -18,22 +18,22 @@ impl NinjaBuf {
 
 pub fn emit_prelude(n: &mut NinjaBuf) {
     n.push("rule cc");
-    n.push(" command = $cc -MMD -MF $out.d $cflags $includes -c $in -o $out");
-    n.push(" depfile = $out.d");
-    n.push(" deps = gcc");
+    n.push("  command = $cc -MMD -MF $out.d $cflags $includes -c $in -o $out");
+    n.push("  depfile = $out.d");
+    n.push("  deps = gcc");
     n.push("");
 
     n.push("rule cxx");
-    n.push(" command = $cxx -MMD -MF $out.d $cxxflags $includes -c $in -o $out");
-    n.push(" depfile = $out.d");
-    n.push(" deps = gcc");
+    n.push("  command = $cxx -MMD -MF $out.d $cxxflags $includes -c $in -o $out");
+    n.push("  depfile = $out.d");
+    n.push("  deps = gcc");
     n.push("");
 
     n.push("rule ar");
-    n.push(" command = $ar rcs $out $in");
+    n.push("  command = $ar $arflags $out $in");
     n.push("");
 
-    n.push("rule link_exe");
-    n.push(" command = $cxx $in -o $out $ldflags $libdirs $libs");
+    n.push("rule libtool_static");
+    n.push("  command = libtool -static -o $out $in");
     n.push("");
 }

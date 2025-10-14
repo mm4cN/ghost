@@ -1,0 +1,9 @@
+[project]
+name = "Ghost (in the Shell)"
+version = "0.1.0"
+
+[workspace]
+members = ["libs/add", "libs/io", "apps"]
+
+[profile.debug]
+defines = ["DEBUG=1"]

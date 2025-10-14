@@ -9,7 +9,94 @@ use anyhow::{bail, Context as _, Result};
 use context::{Ctx, Profile as CtxProfile};
 use manifest::{assert_package, load_package_manifest, load_root_manifest};
 use profile::{default_profile, load_profile};
-use std::{env, fs, path::PathBuf, process::Command};
+use std::{collections::HashMap, env, fs, path::PathBuf, process::Command};
+
+#[derive(Clone, Default)]
+struct DepMeta {
+    root: std::path::PathBuf,
+    public_includes: Vec<String>,
+}
+
+fn collect_dep_meta(members: &[String]) -> anyhow::Result<HashMap<String, DepMeta>> {
+    let mut map = HashMap::new();
+    for m in members {
+        let pkg_root = std::path::PathBuf::from(m).canonicalize()?;
+        let pkg = manifest::load_package_manifest(pkg_root.join("ghost.build").to_str().unwrap())?;
+        let pub_inc = pkg
+            .public
+            .as_ref()
+            .and_then(|p| p.include_dirs.clone())
+            .unwrap_or_default();
+        map.insert(
+            pkg.package.name.clone(),
+            DepMeta {
+                root: pkg_root,
+                public_includes: pub_inc,
+            },
+        );
+    }
+    Ok(map)
+}
+
+fn include_flags(
+    pkg: &manifest::PackageManifest,
+    pkg_root: &std::path::Path,
+    dep_map: &HashMap<String, DepMeta>,
+) -> String {
+    let mut incs: Vec<String> = Vec::new();
+
+    // Domyślne katalogi pakietu
+    for d in ["include", "src"].iter() {
+        let p = pkg_root.join(d);
+        if p.exists() {
+            incs.push(format!("-I\"{}\"", p.display()));
+        }
+    }
+    let gen = pkg_root.join(".gen");
+    if gen.exists() {
+        incs.push(format!("-I\"{}\"", gen.display()));
+    }
+
+    // Deklaratywne include_dirs (public + private) – prefiksuj rootem pakietu
+    let push_dirs = |dirs: Option<Vec<String>>, incs: &mut Vec<String>| {
+        if let Some(v) = dirs {
+            for d in v {
+                let p = pkg_root.join(&d);
+                incs.push(format!("-I\"{}\"", p.display()));
+            }
+        }
+    };
+    if let Some(pv) = &pkg.public {
+        push_dirs(pv.include_dirs.clone(), &mut incs);
+    }
+    if let Some(pv) = &pkg.private {
+        push_dirs(pv.include_dirs.clone(), &mut incs);
+    }
+
+    // Publiczne include’y zależności (direct)
+    if let Some(deps) = &pkg.deps {
+        if let Some(list) = &deps.direct {
+            for dep_name in list {
+                if let Some(meta) = dep_map.get(dep_name) {
+                    // z manifestu
+                    for d in &meta.public_includes {
+                        let p = meta.root.join(d);
+                        incs.push(format!("-I\"{}\"", p.display()));
+                    }
+                    // domyślne include/ zależności
+                    let def_inc = meta.root.join("include");
+                    if def_inc.exists() {
+                        incs.push(format!("-I\"{}\"", def_inc.display()));
+                    }
+                }
+            }
+        }
+    }
+
+    incs.sort();
+    incs.dedup();
+    incs.join(" ")
+}
 
 fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
@@ -107,13 +194,15 @@ fn cmd_build(profile_arg: Option<&str>) -> Result<()> {
         .workspace
         .ok_or_else(|| anyhow::anyhow!("workspace.members missing"))?
         .members;
-
+    let dep_map = collect_dep_meta(&members)?;
     let mut nin = ninja::NinjaBuf::new();
     ninja::emit_prelude(&mut nin);
 
     nin.push(&format!("cc = {}", ctx.toolchain.cc));
     nin.push(&format!("cxx = {}", ctx.toolchain.cxx));
     nin.push(&format!("ar = {}", ctx.toolchain.ar));
+    let arflags = ctx.toolchain.arflags.clone().unwrap_or_default().join(" ");
+    nin.push(&format!("arflags = {}", arflags));
     nin.push(&format!("cflags = {}", ctx.toolchain.cflags.join(" ")));
     nin.push(&format!("cxxflags = {}", ctx.toolchain.cxxflags.join(" ")));
     nin.push(&format!("ldflags = {}", ctx.toolchain.ldflags.join(" ")));
@@ -139,28 +228,47 @@ fn cmd_build(profile_arg: Option<&str>) -> Result<()> {
                 continue;
             }
             let obj = format!(
-                ".obj/{}/{}.o",
+                "build/.obj/{}/{}.o",
                 pkg.package.name,
                 f.replace('/', "_").replace('.', "_")
             );
             let rule = if f.ends_with(".c") { "cc" } else { "cxx" };
+            let inc = include_flags(&pkg, &pkg_root, &dep_map);
             nin.push(&format!("build {obj}: {rule} {}/{}", pkg_root.display(), f));
-            nin.push(&format!(" includes = {}", include_dirs_vars(&pkg)));
+            nin.push(&format!("  includes = {}", inc));
             objs.push(obj);
+        }
+
+        if objs.is_empty() {
+            eprintln!(
+                "error: package '{}' has no object files; check [sources.include]/[roots]",
+                pkg.package.name
+            );
+            std::process::exit(2);
         }
 
         match pkg.package.r#type.as_str() {
             "static" => {
                 let out = format!("lib/lib{}.a", pkg.package.name);
-                fs::create_dir_all("lib").ok();
+                fs::create_dir_all("build/lib").ok();
+                if ctx.toolchain.ar.ends_with("libtool") {
+                    nin.push(&format!("build {}: libtool_static {}", out, objs.join(" ")));
+                } else {
+                    nin.push(&format!("build {}: ar {}", out, objs.join(" ")));
+                }
                 nin.push(&format!("build {out}: ar {}", objs.join(" ")));
                 all_libs.push(out);
             }
             "exe" => {
                 let mut inputs = objs.clone();
                 inputs.extend(all_libs.clone());
-                let out = format!("bin/{}", pkg.package.name);
-                fs::create_dir_all("bin").ok();
+                let out = format!("build/bin/{}", pkg.package.name);
+                fs::create_dir_all("build/bin").ok();
+                if ctx.toolchain.ar.ends_with("libtool") {
+                    nin.push(&format!("build {}: libtool_static {}", out, objs.join(" ")));
+                } else {
+                    nin.push(&format!("build {}: ar {}", out, objs.join(" ")));
+                }
                 nin.push(&format!("build {out}: link_exe {}", inputs.join(" ")));
                 nin.push(" libdirs = -Llib");
             }

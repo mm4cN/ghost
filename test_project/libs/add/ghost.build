@@ -1,0 +1,11 @@
+[package]
+name = "add"
+type = "static"
+
+[sources]
+roots = [".", "include"]
+include = ["*.c", "*.h"]
+
+[public]
+include_dirs = ["include"]
+defines = ["MATH_FAST=1"]

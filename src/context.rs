@@ -5,6 +5,7 @@ pub struct Toolchain {
     pub cc: String,
     pub cxx: String,
     pub ar: String,
+    pub arflags: Option<Vec<String>>,
     pub rc: Option<String>,
     pub sysroot: Option<String>,
     pub target_triple: Option<String>,

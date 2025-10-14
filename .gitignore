@@ -1,2 +1,4 @@
-target/*
-
+**/.ghost/*
+**/.vscode/*
+target/**/*
+build/**/*

@@ -24,7 +24,7 @@ fn exec_shell(cmdline: &str, cwd: &str) -> (i32, String, String) {
     }
 }
 
-pub fn run_lua_hooks(mut ctx: Ctx, project_root: &str) -> Result<Ctx> {
+pub fn run_lua_hooks(ctx: Ctx, project_root: &str) -> Result<Ctx> {
     let path = format!("{project_root}/build.lua");
     if !std::path::Path::new(&path).exists() {
         return Ok(ctx);

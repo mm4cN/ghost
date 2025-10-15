@@ -1,5 +1,8 @@
 **/.clangd/*
+**/.cache/*
 **/.ghost/*
 **/.vscode/*
 target/**/*
 **/build/**/*
+
+compile_commands.json

@@ -9,12 +9,29 @@ use anyhow::{bail, Context as _, Result};
 use context::{Ctx, Profile as CtxProfile};
 use manifest::{assert_package, load_package_manifest, load_root_manifest};
 use profile::{default_profile, load_profile};
+use serde::Serialize;
 use std::{collections::HashMap, env, fs, path::Path, path::PathBuf, process::Command};
+
+#[derive(Serialize)]
+struct CompileCommand {
+    directory: String,
+    file: String,
+    command: String,
+    output: String,
+}
 
 #[derive(Clone, Default)]
 struct DepMeta {
     root: std::path::PathBuf,
     public_includes: Vec<String>,
+}
+
+fn write_compdb(root_dir: &str, entries: &[CompileCommand]) -> anyhow::Result<()> {
+    let path = std::path::Path::new(root_dir).join("compile_commands.json");
+    let json = serde_json::to_string_pretty(entries)?;
+    std::fs::write(&path, json)?;
+    eprintln!("wrote {}", path.display());
+    Ok(())
 }
 
 fn is_compile_src(p: &str) -> bool {
@@ -159,6 +176,7 @@ fn cmd_build(profile_arg: Option<&str>) -> Result<()> {
     let (tc, prof) = load_profile_chain(profile_arg)?;
     let mut ctx = base_ctx()?;
     let ws_root = ctx.workspace_root.clone();
+    let mut ccdb: Vec<CompileCommand> = Vec::new();
     ctx.toolchain = tc;
     ctx.profile = prof;
     ctx = hooks::run_lua_hooks(ctx, &ws_root)?;
@@ -313,12 +331,41 @@ fn cmd_build(profile_arg: Option<&str>) -> Result<()> {
                 pkg_obj_dir,
                 f.replace(['/', '\\'], "_").replace('.', "_")
             );
-
             let inc = include_dirs_vars(&pkg, &pkg_root, &dep_map);
+            let src_abs = pkg_root
+                .join(&f)
+                .canonicalize()
+                .unwrap_or(pkg_root.join(&f));
+            let obj_abs = std::path::Path::new(&obj)
+                .canonicalize()
+                .unwrap_or(std::path::PathBuf::from(&obj));
+            let (compiler, flags) = if rule == "cc" {
+                (ctx.toolchain.cc.clone(), ctx.toolchain.cflags.clone())
+            } else {
+                (ctx.toolchain.cxx.clone(), ctx.toolchain.cxxflags.clone())
+            };
+            // TODO add MSVC
+            // cl /nologo /showIncludes <FLAGS> <INCLUDES> /c <FILE> /Fo<OBJ>
+            let command = format!(
+                "{} -MMD -MF {}.d {} {} -c {} -o {}",
+                compiler,
+                obj,
+                flags.join(" "),
+                inc,
+                src_abs.display(),
+                obj_abs.display(),
+            );
 
             nin.push(&format!("build {obj}: {rule} {}/{}", pkg_root.display(), f));
             nin.push(&format!("  includes = {}", inc));
             unit_map.insert(f.clone(), obj);
+
+            ccdb.push(CompileCommand {
+                directory: ws_root.clone(),
+                file: src_abs.display().to_string(),
+                command,
+                output: obj_abs.display().to_string(),
+            });
         }
 
         let objs: Vec<String> = unit_map.values().cloned().collect();
@@ -366,6 +413,8 @@ fn cmd_build(profile_arg: Option<&str>) -> Result<()> {
 
     let build_ninja_path = format!("{}/build.ninja", build_dir);
     nin.write_to(&build_ninja_path)?;
+
+    write_compdb(&ws_root, &ccdb)?;
 
     // ninja z użyciem -f, żeby nie musieć chdir
     let status = std::process::Command::new("ninja")

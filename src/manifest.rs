@@ -3,7 +3,9 @@ use serde::Deserialize;
 use std::{collections::HashMap, fs};
 
 #[derive(Debug, serde::Deserialize)]
-pub struct BuildDir { pub dir: String }
+pub struct BuildDir {
+    pub dir: String,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct ProjectRoot {

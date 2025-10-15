@@ -27,11 +27,7 @@ pub fn discover(
     for p in exclude {
         gb.add(Glob::new(p)?);
     }
-    for d in [
-        "**/.git/**",
-        "**/build/**",
-        "**/.ghost/**",
-    ] {
+    for d in ["**/.git/**", "**/build/**", "**/.ghost/**"] {
         gb.add(Glob::new(d)?);
     }
     let exc = gb.build()?;

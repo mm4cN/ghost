@@ -10,7 +10,7 @@ use context::{Ctx, Profile as CtxProfile};
 use manifest::{assert_package, load_package_manifest, load_root_manifest};
 use profile::{default_profile, load_profile};
 use serde::Serialize;
-use std::{collections::HashMap, env, fs, path::Path, path::PathBuf, process::Command};
+use std::{collections::HashMap, env, fs, path::Path, path::PathBuf};
 
 #[derive(Serialize)]
 struct CompileCommand {

@@ -48,7 +48,7 @@ pub fn run_lua_hooks(ctx: Ctx, project_root: &str) -> Result<Ctx> {
     })?;
     globals.set("exec", exec_fn)?;
 
-    lua.load(&lua_src).set_name("build.lua")?.exec()?;
+    lua.load(&lua_src).set_name("build.lua").exec()?;
 
     let call = |name: &str| -> mlua::Result<()> {
         match globals.get::<_, Value>(name)? {

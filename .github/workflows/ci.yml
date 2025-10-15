@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: Build & Lint (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache cargo registry + build
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-all-crates: true
+
+      - name: Install Ninja (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+      - name: Install Ninja (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew update
+          brew install ninja || true
+      - name: Install Ninja (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          choco install ninja -y
+        shell: powershell
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Build (debug)
+        run: cargo build --workspace
+
+      - name: Build (release)
+        run: cargo build --workspace --release
+
+      - name: Smoke test binary
+        run: |
+          ./target/release/ghost --help || true
+        shell: bash
+

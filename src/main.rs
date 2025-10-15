@@ -130,6 +130,7 @@ fn cmd_discover() -> Result<()> {
             .map(|b| b.dir.clone())
             .unwrap_or_else(|| "build".into())
     );
+    println!("Targets: ");
 
     let members = root
         .workspace

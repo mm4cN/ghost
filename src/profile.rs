@@ -21,13 +21,22 @@ pub fn default_profile() -> (Toolchain, Profile) {
             cc: "clang".into(),
             cxx: "clang++".into(),
             ar: "ar".into(),
-            arflags: Some(vec!["rcs".into()]),
             rc: None,
             sysroot: None,
             target_triple: None,
             cflags: vec!["-Wall".into(), "-Wextra".into()],
             cxxflags: vec!["-std=c++20".into(), "-O2".into()],
             ldflags: vec![],
+
+            arflags: Some(vec!["rcs".into()]),
+            libdirs: Some(vec!["build/lib".into()]),
+            libs: Some(vec![]),
+
+            link_mode: Some("driver".into()),
+            link: None,
+            link_c: Some("clang".into()),
+            link_cxx: Some("clang++".into()),
+            fuse_ld: None,
         },
         Profile {
             name: "debug".into(),

@@ -1,4 +1,5 @@
+**/.clangd/*
 **/.ghost/*
 **/.vscode/*
 target/**/*
-build/**/*
+**/build/**/*

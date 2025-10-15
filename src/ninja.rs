@@ -36,4 +36,12 @@ pub fn emit_prelude(n: &mut NinjaBuf) {
     n.push("rule libtool_static");
     n.push("  command = libtool -static -o $out $in");
     n.push("");
+
+    n.push("rule link_exe");
+    n.push("  command = $link $linkflags $in -o $out $ldflags $libdirs $libs");
+    n.push("");
+
+    n.push("rule link_exe_msvc");
+    n.push("  command = $link /OUT:$out $in $ldflags $libdirs $libs");
+    n.push("");
 }

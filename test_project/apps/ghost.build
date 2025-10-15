@@ -6,5 +6,6 @@ type = "exe"
 direct = ["add", "io"]
 
 [sources]
-roots = ["."]
-include = ["*.cpp"]
+files = [
+  "app.cpp"
+]

@@ -3,8 +3,9 @@ name = "add"
 type = "static"
 
 [sources]
-roots = [".", "include"]
-include = ["*.c", "*.h"]
+files = [
+  "add.c"
+]
 
 [public]
 include_dirs = ["include"]

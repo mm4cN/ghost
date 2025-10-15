@@ -2,11 +2,15 @@ use anyhow::{bail, Context, Result};
 use serde::Deserialize;
 use std::{collections::HashMap, fs};
 
+#[derive(Debug, serde::Deserialize)]
+pub struct BuildDir { pub dir: String }
+
 #[derive(Debug, Deserialize)]
 pub struct ProjectRoot {
     pub project: Option<ProjectMeta>,
     pub workspace: Option<Workspace>,
-    pub profile: Option<HashMap<String, ProfileFrag>>, // profile.<name>
+    pub profile: Option<HashMap<String, ProfileFrag>>,
+    pub build_dir: Option<BuildDir>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -44,11 +48,7 @@ pub struct Package {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Sources {
-    pub roots: Vec<String>,
-    pub include: Vec<String>,
-    pub exclude: Option<Vec<String>>,
-    pub case_sensitive: Option<bool>,
-    pub follow_symlinks: Option<bool>,
+    pub files: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -83,11 +83,8 @@ pub fn assert_package(pkg: &PackageManifest) -> Result<()> {
         "static" | "shared" | "interface" | "exe" | "test" => {}
         _ => bail!("unsupported package.type: {t}"),
     }
-    if pkg.sources.roots.is_empty() {
-        bail!("sources.roots must not be empty")
-    }
-    if pkg.sources.include.is_empty() {
-        bail!("sources.include must not be empty")
+    if pkg.sources.files.is_empty() {
+        bail!("sources.files must not be empty (explicit sources only)");
     }
     Ok(())
 }

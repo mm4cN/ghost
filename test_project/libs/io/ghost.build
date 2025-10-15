@@ -3,8 +3,9 @@ name = "io"
 type = "static"
 
 [sources]
-roots = [".", "include"]
-include = ["*.cpp", "*.hpp"]
+files = [
+  "io.cpp"
+]
 
 [public]
 include_dirs = ["include"]

@@ -5,13 +5,22 @@ pub struct Toolchain {
     pub cc: String,
     pub cxx: String,
     pub ar: String,
-    pub arflags: Option<Vec<String>>,
     pub rc: Option<String>,
     pub sysroot: Option<String>,
     pub target_triple: Option<String>,
     pub cflags: Vec<String>,
     pub cxxflags: Vec<String>,
     pub ldflags: Vec<String>,
+
+    pub arflags: Option<Vec<String>>,
+    pub libdirs: Option<Vec<String>>,
+    pub libs: Option<Vec<String>>,
+
+    pub link_mode: Option<String>,
+    pub link: Option<String>,
+    pub link_c: Option<String>,
+    pub link_cxx: Option<String>,
+    pub fuse_ld: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -34,4 +43,3 @@ pub struct Ctx {
     pub discover_exclude: Vec<String>,
     pub log: Vec<String>,
 }
-

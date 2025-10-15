@@ -2,7 +2,7 @@
 extern "C" {
 #include "add.h"
 }
-#include "io/io.hpp"
+#include "io.hpp"
 
 int main() {
   log_line("Ghost in the Shell initializing...");

@@ -63,19 +63,24 @@ ghost discover
 ## Repository Layout (example)
 
 ```bash
-ghost/
-├─ ghost.build            # root manifest (workspace + builddir)
-├─ ghost.profile          # local developer/CI toolchain & linker settings
-├─ build.lua              # optional Lua hooks
-├─ libs/
-│  └─ math/
-│     ├─ ghost.build
-│     ├─ src/add.cpp
-│     └─ include/math/add.hpp
-└─ apps/
-   └─ shell/
-      ├─ ghost.build
-      └─ src/main.cpp
+test_project/
+├── apps
+│   ├── app.cpp
+│   └── ghost.build
+├── build.lua
+├── ghost.build
+├── ghost.profile
+└── libs
+    ├── add
+    │   ├── add.c
+    │   ├── ghost.build
+    │   └── include
+    │       └── add.h
+    └── io
+        ├── ghost.build
+        ├── include
+        │   └── io.hpp
+        └── io.cpp
 
 ```
 
@@ -88,7 +93,7 @@ name = "Ghost (in the Shell)"
 version = "0.1.0"
 
 [workspace]
-members = ["libs/math", "apps/shell"]
+members = ["libs/math", "libs/io", "apps"]
 
 # Where to place build artifacts and the generated build.ninja
 [builddir]
@@ -102,8 +107,9 @@ defines = ["DEBUG=1"]
 ### Package `ghost.build`
 
 ```bash
+# add
 [package]
-name = "math"
+name = "add"
 type = "static"          # static | exe  (todo: shared | test)
 
 [sources]
@@ -113,20 +119,36 @@ files = [
 
 [public]
 include_dirs = ["include"]  # exported as -I to dependents
+
+# io
+[package]
+name = "io"
+type = "static"
+
+[sources]
+files = [
+  "io.cpp"
+]
+
+[public]
+include_dirs = ["include"]
+
 ```
 
 ### Executable `ghost.build`
 
 ```bash
 [package]
-name = "shell"
+name = "adder"
 type = "exe"
 
 [deps]
-direct = ["math"]            # declare package deps by name
+direct = ["add", "io"]
 
 [sources]
-files = ["src/main.cpp"]
+files = [
+  "app.cpp"
+]
 ```
 
 ### Toolchain `ghost.profile`
